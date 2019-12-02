@@ -6,6 +6,7 @@ import { Point } from './interfaces';
 import ZimaZoom from './functionality/ZimaZoom'
 import ZimaLine from './data/ZimaLine';
 import ZimaScatter from './data/ZimaScatter';
+import ZimaPerformance from './debug/ZimaPerformance';
 
 
 const App: React.FC = () => {
@@ -13,13 +14,13 @@ const App: React.FC = () => {
     const lineData : Point[] = [];
     const scatterData : Point[] = [];
 
-    for(let i = -500; i < 500; i++) {
+    for(let i = -5000; i < 5000; i++) {
         lineData.push({x : i * 0.1, y: Math.sin(i * 0.1) * i * 0.1});
     }
 
-    for(let i = 0; i < 500; i++) {
-        const x = Math.random() * 100 - 50;
-        const y = Math.random() * 100 - 50;
+    for(let i = 0; i < 1000; i++) {
+        const x = Math.random() * 1000 - 500;
+        const y = Math.random() * 1000 - 500;
         scatterData.push({x, y});
     }
 
@@ -32,6 +33,7 @@ const App: React.FC = () => {
                 axis='both'
                 box
                 wheel />
+            <ZimaPerformance />
         </ZimaChart>
         </div>
     );
