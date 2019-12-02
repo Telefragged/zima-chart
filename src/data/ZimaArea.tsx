@@ -5,10 +5,11 @@ import { translatePoint, AreaPoint } from '../interfaces';
 import { CanvasContext } from '../ZimaChart';
 
 interface ZimaAreaProps<> {
-    data: AreaPoint[]
+    data: AreaPoint[],
+    color?: string
 }
 
-const ZimaArea : React.FunctionComponent<ZimaAreaProps> = ({data} : ZimaAreaProps) => {
+const ZimaArea : React.FunctionComponent<ZimaAreaProps> = ({data, color} : ZimaAreaProps) => {
     return <CanvasContext.Consumer>
         {context => {
             if(!context || !context.canvas || data.length <= 1)
@@ -19,10 +20,11 @@ const ZimaArea : React.FunctionComponent<ZimaAreaProps> = ({data} : ZimaAreaProp
 
             ctx.beginPath();
             const fillStyle = ctx.fillStyle;
-            ctx.fillStyle = 'rgba(32, 32, 192, 0.3)';
+            ctx.fillStyle = color ? color : 'rgba(32, 32, 192, 0.3)';
             for(let i = 0; i < data.length; i++) {
                 const canvasPoint = translatePoint(context.currentDomain, context.canvasDomain, {x: data[i].x, y: data[i].y[0]});
                 ctx.lineTo(canvasPoint.x, canvasPoint.y);
+                
             }
             for(let i = data.length - 1; i >= 0; i--) {
                 const canvasPoint = translatePoint(context.currentDomain, context.canvasDomain, {x: data[i].x, y: data[i].y[1]});
