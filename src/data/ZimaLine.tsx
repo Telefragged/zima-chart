@@ -2,7 +2,7 @@ import React from 'react';
 
 import { Point, translatePoint } from '../interfaces';
 
-import { CanvasContext, ZimaChartContext } from '../ZimaChart';
+import { CanvasContext } from '../ZimaChart';
 
 interface ZimaLineProps<> {
     data: Point[]

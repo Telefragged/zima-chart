@@ -1,5 +1,8 @@
 import React from 'react';
-import { translatePoint, Domain } from './interfaces';
+
+import zimaReducer from 'zima-reducer'
+
+import { Domain } from './interfaces';
 
 
 function easeValue(start: number, target: number, time: number, duration: number) : number {
@@ -41,24 +44,33 @@ export interface ZimaChartContext {
 
 export const CanvasContext = React.createContext<ZimaChartContext | null>(null);
 
+type State = {
+    domain: Domain,
+    startDomain: Domain,
+    targetDomain: Domain,
+    animationStart?: number,
+}
+
+const actions = {
+    updateDomain: (state: State, domain: Domain) => ({...state, domain}),
+    updateTargetDomain: (state: State, targetDomain: Domain, animationStart: number | undefined) =>
+        ({...state, targetDomain, animationStart, startDomain: state.domain})
+}
+
 export const ZimaChart : React.FunctionComponent<ZimaChartProps> = ({width, height, children}) => {
-    const [samples, setSamples] = React.useState(4000);
-    const [domain, setDomain] = React.useState(initialDomain);
-    const [startDomain, setStartDomain] = React.useState(initialDomain);
-    const [targetDomain, setTargetDomain] = React.useState(initialDomain);
-    const [animationStart, setAnimationStart] = React.useState<number | null>(null);
+    const [
+        {domain, startDomain, targetDomain, animationStart},
+        dispatch] = zimaReducer(actions, {domain: initialDomain, startDomain: initialDomain, targetDomain: initialDomain} as State)
     const forceUpdate = React.useState(0)[1];
 
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const requestRef = React.useRef<number | null>(null);
-    const timeRef = React.useRef<number | null>(null);
+    const timeRef = React.useRef<number | undefined>(undefined);
 
     const canvasDomain : Domain = { x: [0, width], y: [0, height]};
 
     const updateTargetDomain = (newDomain : Domain) => {
-        setStartDomain(domain);
-        setTargetDomain(newDomain);
-        setAnimationStart(timeRef.current);
+        dispatch.updateTargetDomain(newDomain, timeRef.current);
     }
 
     const context : ZimaChartContext = {
@@ -72,10 +84,9 @@ export const ZimaChart : React.FunctionComponent<ZimaChartProps> = ({width, heig
         if(animationStart) {
             const duration = time - animationStart;
             if(duration > animationMs) {
-                setDomain(targetDomain);
-                setAnimationStart(null);
+                dispatch.updateDomain(targetDomain);
             } else {
-                setDomain(easeDomain(startDomain, targetDomain, duration, animationMs));
+                dispatch.updateDomain(easeDomain(startDomain, targetDomain, duration, animationMs));
             }
         }
         timeRef.current = time;
@@ -99,8 +110,7 @@ export const ZimaChart : React.FunctionComponent<ZimaChartProps> = ({width, heig
     return <canvas 
         ref={canvasRef}
         width={width}
-        height={height} 
-        onClick={() => setSamples(samples + 1)}>
+        height={height} >
         <CanvasContext.Provider value={context}>
             {children}
         </CanvasContext.Provider>
