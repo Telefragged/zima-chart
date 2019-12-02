@@ -9,6 +9,11 @@ export interface Point {
     y: number
 };
 
+export interface AreaPoint {
+    x: number,
+    y: [number, number];
+}
+
 export interface Dims {
     width: number,
     height: number
