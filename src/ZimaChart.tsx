@@ -115,18 +115,19 @@ export const ZimaChart : React.FunctionComponent<ZimaChartProps> = ({width, heig
 
         ctx.clearRect(0, 0, width, height);
 
-        console.log(drawCallbacks);
-
         for(const callback of drawCallbacks)
             callback(ctx, domain, canvasDomain);
     }
 
-    return <canvas 
-        ref={canvasRef}
-        width={width}
-        height={height} >
+    return <div style={{position: 'relative', marginLeft: 0}}>
+        <canvas 
+            style={{position: 'absolute'}}
+            ref={canvasRef}
+            width={width}
+            height={height} >
+        </canvas>
         <CanvasContext.Provider value={context}>
             {children}
         </CanvasContext.Provider>
-    </canvas>
+    </div>
 }
