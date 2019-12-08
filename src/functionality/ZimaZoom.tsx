@@ -20,18 +20,17 @@ export const ZimaZoom = ({axis, wheel, box} : ZimaZoomProps) => {
             if(!context)
                 return <></>
 
-            const zoom = (mod : number, target : Point) => {
-                const dims = domainDims(context.currentDomain);
+            const calculateNewDomain = (currentDomain: Domain, mod : number, target : Point) => {
+                const dims = domainDims(currentDomain);
                 const newW = (dims.width * mod) / 2;
                 const newH = (dims.height * mod) / 2;
 
-                const c = domainCenter(context.currentDomain);
+                const c = domainCenter(currentDomain);
                 const interpFac = -(mod - 1);
                 const center = { x : interpolate(c.x, target.x, interpFac), y: interpolate(c.y, target.y, interpFac) };
 
                 const newDomain : Domain = {x : [center.x - newW, center.x + newW], y: [center.y - newH, center.y + newH]};
-
-                context.setTargetDomain(newDomain);
+                return newDomain;
             };
 
             const mouseEventToPoint = (event : React.MouseEvent<HTMLCanvasElement, MouseEvent>, defaultValues : Point) => {
@@ -79,12 +78,14 @@ export const ZimaZoom = ({axis, wheel, box} : ZimaZoomProps) => {
                 onWheel={event => {
                     if(!wheel)
                         return;
-                    const mod = event.deltaY > 0 ? 2 : 0.5;
-                    const point = translatePoint(
-                        context.canvasDomain,
-                        context.currentDomain,
-                        {x: event.nativeEvent.offsetX, y: event.nativeEvent.offsetY})
-                    zoom(mod, point);
+                    context.setTargetDomain(domain => {
+                        const mod = event.deltaY > 0 ? 2 : 0.5;
+                        const point = translatePoint(
+                            context.canvasDomain,
+                            domain,
+                            {x: event.nativeEvent.offsetX, y: event.nativeEvent.offsetY})
+                        return calculateNewDomain(domain, mod, point);
+                    });
                 }}
                 onMouseDown={event => {
                     if(!box)
@@ -100,12 +101,12 @@ export const ZimaZoom = ({axis, wheel, box} : ZimaZoomProps) => {
                     if(!box || !beginPoint || !endPoint)
                         return;
 
-                    const point1 = translatePoint(context.canvasDomain, context.currentDomain, beginPoint);
-                    const point2 = translatePoint(context.canvasDomain, context.currentDomain, endPoint);
+                    context.setTargetDomain(domain => {
+                        const point1 = translatePoint(context.canvasDomain, domain, beginPoint);
+                        const point2 = translatePoint(context.canvasDomain, domain, endPoint);
+                        return domainFromPoints(point1, point2);
+                    });
 
-                    const targetDomain = domainFromPoints(point1, point2);
-
-                    context.setTargetDomain(targetDomain);
                     setBeginPoint(null);
                     setEndPoint(null);
                 }} />

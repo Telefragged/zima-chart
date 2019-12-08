@@ -36,78 +36,81 @@ export type RenderCallback = (ctx: CanvasRenderingContext2D, domain: Domain, can
 
 export interface ZimaChartContext {
     canvas?: HTMLCanvasElement,
-    currentDomain: Domain,
     canvasDomain: Domain,
-    setTargetDomain: (domain : Domain) => void,
+    setTargetDomain: (updateDomain : (domain: Domain) => Domain) => void,
     registerCallback: (callback: RenderCallback) => void
 }
 
 export const CanvasContext = React.createContext<ZimaChartContext | null>(null);
 
 type State = {
-    domain: Domain,
-    startDomain: Domain,
-    targetDomain: Domain,
-    animationStart?: number,
-    drawCallbacks: RenderCallback[]
+    drawCallbacks: RenderCallback[],
+    update: number
 }
 
 const actions = {
-    updateDomain: (state: State, domain: Domain) => ({...state, domain}),
-    updateTargetDomain: (state: State, targetDomain: Domain, animationStart: number | undefined) =>
-        ({...state, targetDomain, animationStart, startDomain: state.domain}),
     registerCallback: (state: State, callback: RenderCallback) =>
-        ({...state, drawCallbacks: [...state.drawCallbacks, callback]})
+        ({...state, drawCallbacks: [...state.drawCallbacks, callback]}),
+    forceUpdate: (state: State) => ({...state, update: state.update + 1})
 }
 
 export const ZimaChart : React.FunctionComponent<ZimaChartProps> = ({width, height, children}) => {
     const [
-        {domain, startDomain, targetDomain, animationStart, drawCallbacks},
+        {drawCallbacks},
         dispatch] = zimaReducer(actions,
             {
-                domain: initialDomain,
-                startDomain: initialDomain,
-                targetDomain: initialDomain,
-                drawCallbacks: []
+                drawCallbacks: [],
+                update: 0
             } as State)
-    const forceUpdate = React.useState(0)[1];
 
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const requestRef = React.useRef<number | null>(null);
-    const timeRef = React.useRef<number | undefined>(undefined);
+    const animationStartRef = React.useRef<number | undefined>(undefined);
+    const domainRef = React.useRef<Domain>(initialDomain);
+
+    const updateDomain = (domain: Domain) => {
+        domainRef.current = domain;
+    };
+
+    const domainAnimationRef = React.useRef<{startDomain: Domain, targetDomain: Domain}>(
+        {startDomain: initialDomain, targetDomain: initialDomain});
 
     const canvasDomain : Domain = { x: [0, width], y: [0, height]};
 
+    const animate : FrameRequestCallback = time => {
+        if(animationStartRef.current) {
+            const {startDomain, targetDomain} = domainAnimationRef.current;
+            const duration = time - animationStartRef.current;
+            if(duration > animationMs) {
+                updateDomain(targetDomain);
+                requestRef.current = null;
+            } else {
+                updateDomain(easeDomain(startDomain, targetDomain, duration, animationMs));
+                cancelAnimationFrame(requestRef.current!);
+                requestRef.current = requestAnimationFrame(animate);
+            }
+        }
+        dispatch.forceUpdate();
+    };
+
     const updateTargetDomain = (newDomain : Domain) => {
-        dispatch.updateTargetDomain(newDomain, timeRef.current);
+        animationStartRef.current = window.performance.now();
+        domainAnimationRef.current = {startDomain: domainRef.current, targetDomain: newDomain};
+        cancelAnimationFrame(requestRef.current!);
+        requestRef.current = requestAnimationFrame(animate);
     }
 
     const context : ZimaChartContext = {
         canvas: canvasRef.current ? canvasRef.current : undefined,
-        currentDomain: domain,
         canvasDomain,
-        setTargetDomain: updateTargetDomain,
+        setTargetDomain: (updateDomain) => updateTargetDomain(updateDomain(domainRef.current)),
         registerCallback: dispatch.registerCallback
-    }
-
-    const animate : FrameRequestCallback = time => {
-        if(animationStart) {
-            const duration = time - animationStart;
-            if(duration > animationMs) {
-                dispatch.updateDomain(targetDomain);
-            } else {
-                dispatch.updateDomain(easeDomain(startDomain, targetDomain, duration, animationMs));
-            }
-        }
-        timeRef.current = time;
-        forceUpdate(x => x + 1);
-        requestRef.current = requestAnimationFrame(animate);
     }
       
     React.useEffect(() => {
         requestRef.current = requestAnimationFrame(animate);
         return () => cancelAnimationFrame(requestRef.current!);
-    });
+    }, []);
 
     if(canvasRef.current) {
         const ctx = canvasRef.current.getContext('2d');
@@ -116,10 +119,10 @@ export const ZimaChart : React.FunctionComponent<ZimaChartProps> = ({width, heig
         ctx.clearRect(0, 0, width, height);
 
         for(const callback of drawCallbacks)
-            callback(ctx, domain, canvasDomain);
+            callback(ctx, domainRef.current, canvasDomain);
     }
 
-    return <div style={{position: 'relative', marginLeft: 0}}>
+    return <div style={{position: 'relative', marginLeft: 0, display: 'flexbox', boxAlign: 'center', boxPack: 'center'}}>
         <canvas 
             style={{position: 'absolute'}}
             ref={canvasRef}
